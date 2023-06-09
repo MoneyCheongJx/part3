@@ -80,16 +80,16 @@ const generateId = () => {
   return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)
 }
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body
 
-  if (!body.name || !body.phone) {
-    return response.status(400).json(
-      {
-        error: 'name or number missing'
-      }
-    )
-  }
+  // if (!body.name || !body.phone) {
+  //   return response.status(400).json(
+  //     {
+  //       error: 'name or number missing'
+  //     }
+  //   )
+  // }
 
   // if (persons.find(p => p.name === body.name)) {
   //   return response.status(400).json(
@@ -113,11 +113,13 @@ app.post('/api/persons', (request, response) => {
   // persons = persons.concat(person)
   // response.json(person)
 
-  person.save().then(
+  person.save()
+  .then(
     (savedPerson) => {
       response.json(savedPerson)
     }
   )
+  .catch(error => next(error))
 })
 
 app.put('/api/persons/:id', (request, response, next) => {
@@ -128,7 +130,7 @@ app.put('/api/persons/:id', (request, response, next) => {
     phone: body.phone
   }
 
-  Person.findByIdAndUpdate(request.params.id, person, {new: true})
+  Person.findByIdAndUpdate(request.params.id, person, { new: true, runValidators: true, context: 'query' })
   .then(updatedPerson => {
     response.json(updatedPerson)
   })
@@ -149,12 +151,15 @@ const unknownEndpoint = (request, response) => {
 // handler of requests with unknown endpoint
 app.use(unknownEndpoint)
 
-const errorHandler = (error, req, res, next) => {
+const errorHandler = (error, request, response, next) => {
   console.log(error.message)
 
   if (error.name === 'CastError') {
     return response.status(400).send({error: 'malformatted id'})
   }
+  else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  } 
 
   next(error)
 }
